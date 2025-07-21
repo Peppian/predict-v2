@@ -10,4 +10,4 @@ requests
 openai
 httpx
 cloudpickle
-scikit-learn
+scikit-learn==1.6.1
