@@ -1,4 +1,4 @@
-﻿title,brand,model,type,year,transmisi,qty,avg_price,low_price,mid_price,new_price,price_per_mile,avg_mileage_model
+﻿title,brand,model,type,year,transmisi,qty,avg_price,low_price,mid_price,new_price,price_per_mile,m_model
 Toyota Kijang Innova G Automatic 2020,Toyota,Kijang Innova,G,2020,Automatic,154," 269,454,545 "," 200,000,000 "," 234,727,273 ",355050000," 2,343.89 ",66150.66883
 Nissan Livina VL Automatic 2022,Nissan,Livina,VL,2022,Automatic,45," 207,911,111 "," 189,000,000 "," 198,455,556 ",308800000," 4,615.58 ",25955.55556
 Honda Brio Satya E Automatic 2022,Honda,Brio,Satya E,2022,Automatic,126," 157,300,397 "," 140,000,000 "," 148,650,198 ",189700000," 1,462.41 ",33985.03968
