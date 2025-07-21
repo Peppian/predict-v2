@@ -7,10 +7,10 @@ from ai_response import ask_openrouter
 from prompt import generate_price_explanation_prompt
 
 # === Load model dan metadata ===
-MODEL_PATH = "legoas_v2/model/xgb_price_predictor.joblib"
-COLUMNS_PATH = "legoas_v2/model/xgb_model_columns.joblib"
-DATA_PATH = "legoas_v2/model/train_dataset.csv"
-REFERENCE_PATH = "legoas_v2/model/validate_dataset.csv"
+MODEL_PATH = "model/xgb_price_predictor.joblib"
+COLUMNS_PATH = "model/xgb_model_columns.joblib"
+DATA_PATH = "model/train_dataset.csv"
+REFERENCE_PATH = "model/validate_dataset.csv"
 
 model = joblib.load(MODEL_PATH)
 columns_meta = joblib.load(COLUMNS_PATH)
