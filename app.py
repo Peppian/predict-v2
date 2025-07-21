@@ -76,7 +76,7 @@ if st.button("🔍 Estimasi Harga"):
             "value_mileage": mileage,
             "vehicleModelDate": year,
             "age": age,
-            "mileage_per_year": mileage_per_year,
+            "mileage_per_year": mileage / (age + 1),
             "age_squared": age ** 2,
             "mileage_squared": mileage ** 2,
             "merek": brand,
@@ -111,8 +111,12 @@ if st.button("🔍 Estimasi Harga"):
             mid_price = ref_row['mid_price'].values[0]
             avg_mileage_model = ref_row['m_mile'].values[0]
 
-            # === Hitung depresiasi ===
-            mileage_diff_ratio = (mileage - avg_mileage_model) / avg_mileage_model
+            # === Hitung depresiasi berdasarkan mileage & umur ===
+            if pd.isna(avg_mileage_model) or avg_mileage_model == 0:
+                mileage_diff_ratio = 0
+            else:
+                mileage_diff_ratio = (mileage - avg_mileage_model) / avg_mileage_model
+
             mileage_penalty = mileage_diff_ratio * 0.1  # Bobot 10% terhadap jarak tempuh
             age_penalty = age * 0.05                     # Bobot 5% per tahun
 
