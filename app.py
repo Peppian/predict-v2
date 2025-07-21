@@ -29,10 +29,11 @@ for col in ['avg_price', 'low_price', 'mid_price', 'new_price']:
 
 categorical_cols = columns_meta["categorical"]
 
+# === UI CONFIG ===
 st.set_page_config(page_title="Estimasi Harga Mobil Bekas", page_icon="🚘")
 st.title("🚘 Estimasi Harga Mobil Bekas")
 
-# === INPUT UI ===
+# === INPUT FORM ===
 brand_list = sorted(data['merek'].dropna().unique())
 brand = st.selectbox("Pilih Merek Mobil", ["-"] + brand_list)
 
@@ -44,23 +45,17 @@ filtered_variants = data[
 ]['varian'].dropna().unique() if model_selected != "-" else []
 variant_selected = st.selectbox("Pilih Varian", ["-"] + list(filtered_variants))
 
-# Auto metadata
+# Auto ambil metadata
 row = data[
     (data['merek'] == brand) &
     (data['model'] == model_selected) &
     (data['varian'] == variant_selected)
 ].head(1)
 
-if not row.empty:
-    body_type = row['tipe_body'].values[0]
-    fuel_type = row['bahan_bakar'].values[0]
-    seating_capacity = row['kapasitas'].values[0] if 'kapasitas' in row.columns else 0
-else:
-    body_type = "-"
-    fuel_type = "-"
-    seating_capacity = 0
+body_type = row['tipe_body'].values[0] if not row.empty else "-"
+fuel_type = row['bahan_bakar'].values[0] if not row.empty else "-"
+seating_capacity = row['kapasitas'].values[0] if not row.empty and 'kapasitas' in row.columns else 0
 
-# Auto display
 st.markdown(f"**Body Type (auto):** {body_type}")
 st.markdown(f"**Bahan Bakar (auto):** {fuel_type}")
 
@@ -68,8 +63,6 @@ region = st.selectbox("Wilayah", sorted(data['lokasi'].dropna().unique()))
 transmission = st.selectbox("Transmisi", sorted(data['transmisi'].dropna().unique()))
 year = st.slider("Tahun Produksi", int(data['tahun'].min()), 2025, 2020)
 mileage = st.number_input("Kilometer", min_value=0, value=0)
-
-# ... (kode di atas tetap sama hingga sebelum prediksi harga)
 
 # === PREDIKSI HARGA ===
 if st.button("🔍 Estimasi Harga"):
@@ -95,15 +88,16 @@ if st.button("🔍 Estimasi Harga"):
             "transmision": transmission
         }])
 
-        # Pastikan semua kolom kategori ada
+        # Pastikan kolom kategori lengkap
         for col in categorical_cols:
             if col not in input_data.columns:
                 input_data[col] = ""
 
+        # === Model Prediction ===
         log_price_pred = model.predict(input_data)[0]
         estimated_price = np.expm1(log_price_pred)
 
-        # Ambil referensi harga dan rata-rata km per model
+        # === Penyesuaian berdasarkan data referensi ===
         ref_row = ref_prices[
             (ref_prices['brand'] == brand) &
             (ref_prices['model'] == model_selected) &
@@ -117,34 +111,31 @@ if st.button("🔍 Estimasi Harga"):
             mid_price = ref_row['mid_price'].values[0]
             avg_mileage_model = ref_row['m_mile'].values[0]
 
-            # --- Depresiasi Berdasarkan KM ---
+            # === Hitung depresiasi ===
             mileage_diff_ratio = (mileage - avg_mileage_model) / avg_mileage_model
-            mileage_penalty = mileage_diff_ratio * 0.1  # 10% dampak km, bisa diatur
-
-            # --- Depresiasi Berdasarkan Usia ---
-            age_penalty = age * 0.05  # 5% per tahun
+            mileage_penalty = mileage_diff_ratio * 0.1  # Bobot 10% terhadap jarak tempuh
+            age_penalty = age * 0.05                     # Bobot 5% per tahun
 
             total_penalty = mileage_penalty + age_penalty
-            total_penalty = np.clip(total_penalty, 0, 0.5)  # Maks. 50% koreksi
+            total_penalty = np.clip(total_penalty, 0, 0.5)
 
             adjusted_price = estimated_price * (1 - total_penalty)
 
-            # Koreksi berdasarkan referensi batas
+            # Koreksi terhadap batas referensi
             if adjusted_price > mid_price:
                 adjusted_price = mid_price
             elif adjusted_price < low_price:
                 adjusted_price = max(adjusted_price, low_price * 0.95)
 
-            # Pembulatan
             final_price = round(adjusted_price / 100_000) * 100_000
-
         else:
+            # Jika tidak ada data referensi, gunakan prediksi murni
             final_price = round(estimated_price / 100_000) * 100_000
 
-        # Tampilkan estimasi akhir
+        # === Tampilkan hasil ===
         st.success(f"💰 Estimasi Harga: **Rp {final_price:,.0f}**")
 
-        # Prompt AI
+        # === Penjelasan AI ===
         prompt_text = generate_price_explanation_prompt(
             brand=brand,
             model=model_selected,
@@ -166,5 +157,5 @@ if st.button("🔍 Estimasi Harga"):
                 st.markdown("### 🧠 Penjelasan AI")
                 st.markdown(explanation)
             except Exception as e:
-                st.error("❌ Gagal mendapatkan respons dari AI. Silakan cek koneksi atau API key.")
+                st.error("❌ Gagal mendapatkan respons dari AI.")
                 st.exception(e)
