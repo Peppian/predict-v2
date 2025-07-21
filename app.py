@@ -69,6 +69,8 @@ transmission = st.selectbox("Transmisi", sorted(data['transmisi'].dropna().uniqu
 year = st.slider("Tahun Produksi", int(data['tahun'].min()), 2025, 2020)
 mileage = st.number_input("Kilometer", min_value=0, value=0)
 
+# ... (kode di atas tetap sama hingga sebelum prediksi harga)
+
 # === PREDIKSI HARGA ===
 if st.button("🔍 Estimasi Harga"):
     if "-" in [brand, model_selected, variant_selected, region, transmission, fuel_type, body_type]:
@@ -101,7 +103,7 @@ if st.button("🔍 Estimasi Harga"):
         log_price_pred = model.predict(input_data)[0]
         estimated_price = np.expm1(log_price_pred)
 
-        # Ambil referensi harga
+        # Ambil referensi harga dan rata-rata km per model
         ref_row = ref_prices[
             (ref_prices['brand'] == brand) &
             (ref_prices['model'] == model_selected) &
@@ -113,20 +115,36 @@ if st.button("🔍 Estimasi Harga"):
         if not ref_row.empty:
             low_price = ref_row['low_price'].values[0]
             mid_price = ref_row['mid_price'].values[0]
+            avg_mileage_model = ref_row['m_mile'].values[0]
 
-            # Koreksi harga
-            if estimated_price > mid_price:
-                estimated_price = mid_price
-            elif estimated_price < low_price:
-                estimated_price = max(estimated_price, low_price * 0.95)
+            # --- Depresiasi Berdasarkan KM ---
+            mileage_diff_ratio = (mileage - avg_mileage_model) / avg_mileage_model
+            mileage_penalty = mileage_diff_ratio * 0.1  # 10% dampak km, bisa diatur
 
-        # Pembulatan ke kelipatan 1 juta
-        estimated_price = round(estimated_price / 100_000) * 100_000
+            # --- Depresiasi Berdasarkan Usia ---
+            age_penalty = age * 0.05  # 5% per tahun
 
-        # Tampilkan estimasi
-        st.success(f"💰 Estimasi Harga: **Rp {estimated_price:,.0f}**")
+            total_penalty = mileage_penalty + age_penalty
+            total_penalty = np.clip(total_penalty, 0, 0.5)  # Maks. 50% koreksi
 
-        # Prompt untuk AI
+            adjusted_price = estimated_price * (1 - total_penalty)
+
+            # Koreksi berdasarkan referensi batas
+            if adjusted_price > mid_price:
+                adjusted_price = mid_price
+            elif adjusted_price < low_price:
+                adjusted_price = max(adjusted_price, low_price * 0.95)
+
+            # Pembulatan
+            final_price = round(adjusted_price / 100_000) * 100_000
+
+        else:
+            final_price = round(estimated_price / 100_000) * 100_000
+
+        # Tampilkan estimasi akhir
+        st.success(f"💰 Estimasi Harga: **Rp {final_price:,.0f}**")
+
+        # Prompt AI
         prompt_text = generate_price_explanation_prompt(
             brand=brand,
             model=model_selected,
@@ -138,7 +156,7 @@ if st.button("🔍 Estimasi Harga"):
             region=region,
             mileage=mileage,
             variant=variant_selected,
-            estimated_price=estimated_price
+            estimated_price=final_price
         )
 
         with st.spinner("🔎 Menganalisis estimasi harga dengan AI..."):
