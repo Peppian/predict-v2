@@ -61,7 +61,20 @@ st.markdown(f"**Bahan Bakar (auto):** {fuel_type}")
 
 region = st.selectbox("Wilayah", sorted(data['lokasi'].dropna().unique()))
 transmission = st.selectbox("Transmisi", sorted(data['transmisi'].dropna().unique()))
-year = st.slider("Tahun Produksi", int(data['tahun'].min()), 2025, 2020)
+
+# Ambil tahun minimum dan maksimum dari ref_prices (validate dataset)
+model_years = ref_prices[
+    (ref_prices['brand'] == brand) &
+    (ref_prices['model'] == model_selected)
+]
+
+if not model_years.empty:
+    min_year = int(model_years['year'].min())
+    max_year = int(model_years['year'].max())
+else:
+    min_year, max_year = 2000, 2025
+
+year = st.slider("Tahun Produksi", min_value=min_year, max_value=max_year, value=max_year)
 mileage = st.number_input("Kilometer", min_value=0, value=0)
 
 # === PREDIKSI HARGA ===
