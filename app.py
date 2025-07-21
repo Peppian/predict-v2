@@ -45,7 +45,7 @@ filtered_variants = data[
 ]['varian'].dropna().unique() if model_selected != "-" else []
 variant_selected = st.selectbox("Pilih Varian", ["-"] + list(filtered_variants))
 
-# Auto ambil metadata
+# Ambil metadata otomatis dari data
 row = data[
     (data['merek'] == brand) &
     (data['model'] == model_selected) &
@@ -76,7 +76,7 @@ if st.button("🔍 Estimasi Harga"):
             "value_mileage": mileage,
             "vehicleModelDate": year,
             "age": age,
-            "mileage_per_year": mileage / (age + 1),
+            "mileage_per_year": mileage_per_year,
             "age_squared": age ** 2,
             "mileage_squared": mileage ** 2,
             "merek": brand,
@@ -88,16 +88,16 @@ if st.button("🔍 Estimasi Harga"):
             "transmision": transmission
         }])
 
-        # Pastikan kolom kategori lengkap
+        # Tambahkan kolom kategori kosong jika belum ada
         for col in categorical_cols:
             if col not in input_data.columns:
                 input_data[col] = ""
 
-        # === Model Prediction ===
+        # === Prediksi awal harga ===
         log_price_pred = model.predict(input_data)[0]
         estimated_price = np.expm1(log_price_pred)
 
-        # === Penyesuaian berdasarkan data referensi ===
+        # === Penyesuaian berdasarkan referensi ===
         ref_row = ref_prices[
             (ref_prices['brand'] == brand) &
             (ref_prices['model'] == model_selected) &
@@ -106,37 +106,27 @@ if st.button("🔍 Estimasi Harga"):
             (ref_prices['transmisi'] == transmission)
         ]
 
-        # Pastikan avg_mileage_model bisa dihitung
         if not ref_row.empty:
-            avg_mileage_model = ref_row['m_mile'].values[0]
+            low_price = float(ref_row['low_price'].values[0])
+            mid_price = float(ref_row['mid_price'].values[0])
             try:
-                mileage = float(mileage)
-            except ValueError:
-                mileage = 0
+                avg_mileage_model = float(ref_row['m_mile'].values[0])
+            except:
+                avg_mileage_model = 0.0
 
-            try:
-                avg_mileage_model = float(avg_mileage_model)
-            except ValueError:
-                avg_mileage_model = 0
-
+            # Penyesuaian KM
             if pd.isna(avg_mileage_model) or avg_mileage_model == 0:
                 mileage_diff_ratio = 0
             else:
                 mileage_diff_ratio = (mileage - avg_mileage_model) / avg_mileage_model
 
-            mileage_penalty = mileage_diff_ratio * 0.1  # Bobot 10% terhadap perbedaan KM
-            age_penalty = age * 0.05                     # Bobot 5% terhadap usia mobil
-        else:
-            mileage_penalty = 0
-            age_penalty = 0
-                            # Bobot 5% per tahun
-            
-            total_penalty = mileage_penalty + age_penalty
-            total_penalty = np.clip(total_penalty, 0, 0.5)
+            mileage_penalty = mileage_diff_ratio * 0.1
+            age_penalty = age * 0.05
+            total_penalty = np.clip(mileage_penalty + age_penalty, 0, 0.5)
 
             adjusted_price = estimated_price * (1 - total_penalty)
 
-            # Koreksi terhadap batas referensi
+            # Koreksi berdasarkan batas referensi
             if adjusted_price > mid_price:
                 adjusted_price = mid_price
             elif adjusted_price < low_price:
@@ -144,7 +134,7 @@ if st.button("🔍 Estimasi Harga"):
 
             final_price = round(adjusted_price / 100_000) * 100_000
         else:
-            # Jika tidak ada data referensi, gunakan prediksi murni
+            # Jika tidak ada referensi, gunakan model murni
             final_price = round(estimated_price / 100_000) * 100_000
 
         # === Tampilkan hasil ===
