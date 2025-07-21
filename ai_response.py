@@ -1,39 +1,24 @@
 import requests
-import os
-from dotenv import load_dotenv
+import streamlit as st
 
-# Muat API key dari file .env
-load_dotenv()
-API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-def ask_openrouter(prompt: str, model: str = "deepseek/deepseek-r1:free") -> str:
-    if not API_KEY:
-        return "[ERROR] API key tidak ditemukan. Pastikan OPENROUTER_API_KEY sudah di-set di .env."
+def ask_openrouter(prompt: str) -> str:
+    api_key = st.secrets["openrouter"]["api_key"]
+    model = st.secrets["openrouter"]["model"]
 
     headers = {
-        "Authorization": f"Bearer {API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
 
     data = {
         "model": model,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ]
+        "messages": [{"role": "user", "content": prompt}]
     }
 
-    try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=30
-        )
-        response.raise_for_status()
-        result = response.json()
-        return result["choices"][0]["message"]["content"].strip()
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
 
-    except requests.exceptions.RequestException as e:
-        return f"[ERROR] Koneksi gagal: {str(e)}"
-    except KeyError:
-        return "[ERROR] Format respons API tidak sesuai. Cek JSON dari server."
+    if response.status_code != 200:
+        print(f"[OpenRouter ERROR {response.status_code}] {response.text}")
+        return "❌ Gagal mendapatkan respons dari LLM."
+
+    return response.json()["choices"][0]["message"]["content"]
