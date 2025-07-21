@@ -106,20 +106,31 @@ if st.button("🔍 Estimasi Harga"):
             (ref_prices['transmisi'] == transmission)
         ]
 
+        # Pastikan avg_mileage_model bisa dihitung
         if not ref_row.empty:
-            low_price = ref_row['low_price'].values[0]
-            mid_price = ref_row['mid_price'].values[0]
             avg_mileage_model = ref_row['m_mile'].values[0]
+            try:
+                mileage = float(mileage)
+            except ValueError:
+                mileage = 0
 
-            # === Hitung depresiasi berdasarkan mileage & umur ===
+            try:
+                avg_mileage_model = float(avg_mileage_model)
+            except ValueError:
+                avg_mileage_model = 0
+
             if pd.isna(avg_mileage_model) or avg_mileage_model == 0:
                 mileage_diff_ratio = 0
             else:
                 mileage_diff_ratio = (mileage - avg_mileage_model) / avg_mileage_model
 
-            mileage_penalty = mileage_diff_ratio * 0.1  # Bobot 10% terhadap jarak tempuh
-            age_penalty = age * 0.05                     # Bobot 5% per tahun
-
+            mileage_penalty = mileage_diff_ratio * 0.1  # Bobot 10% terhadap perbedaan KM
+            age_penalty = age * 0.05                     # Bobot 5% terhadap usia mobil
+        else:
+            mileage_penalty = 0
+            age_penalty = 0
+                            # Bobot 5% per tahun
+            
             total_penalty = mileage_penalty + age_penalty
             total_penalty = np.clip(total_penalty, 0, 0.5)
 
